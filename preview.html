@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retro Solo AI Referee</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111826; --panel2:#0f1622; --txt:#e6edf3; --muted:#9fb0c0;
+      --accent:#6ee7ff; --good:#34d399; --warn:#fbbf24; --bad:#fb7185; --line:#243244;
+      --chip:#162235;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{ box-sizing:border-box; }
+    body{ margin:0; font-family:var(--sans); background:linear-gradient(180deg,#070a0f,#0b0f14); color:var(--txt); }
+    header{
+      padding:16px 18px; border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,#0d1420,#0b0f14);
+      position:sticky; top:0; z-index:10;
+    }
+    header h1{ margin:0; font-size:18px; letter-spacing:.2px; }
+    header .sub{ color:var(--muted); font-size:12px; margin-top:4px; }
+    .wrap{ padding:16px; max-width:1180px; margin:0 auto; }
+    .grid{ display:grid; grid-template-columns: 400px 1fr; gap:14px; }
+    @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+
+    .card{
+      background:linear-gradient(180deg,var(--panel),var(--panel2));
+      border:1px solid var(--line);
+      border-radius:14px; padding:14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row > *{ flex: 1 1 auto; }
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input, select, textarea{
+      width:100%; padding:10px 10px; border-radius:10px;
+      border:1px solid var(--line); background:#0a1220; color:var(--txt);
+      outline:none;
+    }
+    textarea{ min-height:90px; resize:vertical; font-family:var(--mono); font-size:12px; }
+    button{
+      padding:10px 12px; border-radius:12px; border:1px solid var(--line);
+      background:#0e1a2c; color:var(--txt); cursor:pointer;
+      transition: transform .05s ease, background .2s ease;
+      font-weight:600;
+    }
+    button:hover{ background:#132443; }
+    button:active{ transform: translateY(1px); }
+    .btn-accent{ border-color:#1d4ed8; background:#0b2a55; }
+    .btn-accent:hover{ background:#0d3570; }
+    .btn-good{ border-color:#065f46; background:#062a22; }
+    .btn-good:hover{ background:#08362d; }
+    .btn-warn{ border-color:#92400e; background:#2a1b08; }
+    .btn-warn:hover{ background:#3a240a; }
+    .btn-bad{ border-color:#7f1d1d; background:#2a0b0b; }
+    .btn-bad:hover{ background:#3a0d0d; }
+
+    .pill{
+      display:inline-flex; gap:6px; align-items:center;
+      padding:6px 10px; border-radius:999px;
+      background:var(--chip); border:1px solid var(--line);
+      font-size:12px; color:var(--muted);
+    }
+    .pill strong{ color:var(--txt); font-family:var(--mono); font-weight:700; }
+    .split{ display:flex; justify-content:space-between; gap:10px; align-items:center; }
+    .muted{ color:var(--muted); font-size:12px; }
+    .hr{ height:1px; background:var(--line); margin:12px 0; }
+    .list{ display:flex; flex-direction:column; gap:10px; }
+    .item{
+      border:1px solid var(--line); border-radius:12px; padding:10px;
+      background:#0a1220;
+    }
+    .item h3{ margin:0 0 6px 0; font-size:14px; }
+    .tag{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .log{
+      font-family:var(--mono); font-size:12px; line-height:1.45;
+      white-space:pre-wrap;
+      background:#070c14; border:1px solid var(--line);
+      border-radius:12px; padding:12px; min-height:280px;
+      max-height:520px; overflow:auto;
+    }
+    .tiny{ font-size:11px; }
+    .two{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+    @media (max-width: 620px){ .two{ grid-template-columns:1fr; } }
+
+    .statusChip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px; border-radius:999px; border:1px solid var(--line);
+      background:#0d1730; font-size:12px; color:var(--muted);
+    }
+    .statusGood{ border-color:#065f46; color:#a7f3d0; }
+    .statusBroken{ border-color:#92400e; color:#fde68a; }
+    .statusKIA{ border-color:#7f1d1d; color:#fecaca; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Retro Solo AI Referee</h1>
+  <div class="sub">Movement (2D6), Fire (1D6), Random Events (D10), “Keep Moving”, plus unit status (Good/Broken/KIA) + optional mass retreat.</div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- LEFT: CONTROLS -->
+    <div class="card">
+      <div class="split">
+        <div>
+          <div class="pill">Turn <strong id="turnPill">1</strong></div>
+          <div class="pill">Phase <strong id="phasePill">Setup</strong></div>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="btn-warn" id="saveBtn">Save</button>
+          <button class="btn-warn" id="loadBtn">Load</button>
+          <button class="btn-bad" id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="two">
+        <div>
+          <label>Player 1 label (odd turns affected)</label>
+          <input id="p1Label" value="Player 1" />
+        </div>
+        <div>
+          <label>Player 2 label (even turns affected)</label>
+          <input id="p2Label" value="Player 2" />
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div>
+          <label>Attacker Posture (Movement)</label>
+          <select id="attackerDRM">
+            <option value="-1">Fanatical Assault (push hard)</option>
+            <option value="0" selected>Determined (standard)</option>
+            <option value="1">Cautious Advance (fire more)</option>
+            <option value="2">Hesitant (stall-prone)</option>
+            <option value="3">Disorganized (often no-move)</option>
+          </select>
+        </div>
+        <div>
+          <label>Defender Posture (Movement)</label>
+          <select id="defenderDRM">
+            <option value="-4">Fanatic Hold (very sticky)</option>
+            <option value="-3">Dig In (rarely moves)</option>
+            <option value="-2" selected>Hold At All Costs (standard defense)</option>
+            <option value="-1">Elastic Defense (some give)</option>
+            <option value="0">Uncommitted / Fluid (moves normally)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div>
+          <label>Scenario note / house flags</label>
+          <input id="scenarioNote" placeholder="e.g., Guards Counterattack; snow on event 6; trucks withdraw" />
+        </div>
+        <div>
+          <label>Event bias (optional)</label>
+          <select id="eventBias">
+            <option value="none">None (pure d10)</option>
+            <option value="axis1234_allied56">Bias reminder: Axis hit on 1–4, Allies on 5–6</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row">
+        <button class="btn-accent" id="nextTurnBtn">Next Turn</button>
+        <button class="btn-accent" id="setMovementBtn">Movement Phase</button>
+        <button class="btn-accent" id="setFireBtn">Fire Phase</button>
+        <button class="btn-accent" id="setCCBtn">Close Combat Phase</button>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-good" id="rollEventBtn">Roll Random Event (D10)</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="split">
+        <h2 style="margin:0; font-size:15px;">Side Status + Retreat</h2>
+        <div class="pill">Tracked <strong id="countPill">0</strong></div>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div class="item" style="margin:0;">
+          <div class="split">
+            <div class="tag">Attacker</div>
+            <button class="btn-warn" id="toggleAttRetreatBtn" style="flex:0 0 auto; padding:8px 10px;">Toggle Retreat</button>
+          </div>
+          <div class="muted tiny" id="attSummary">Good 0 • Broken 0 • KIA 0 • Loss 0%</div>
+          <div class="muted tiny" id="attRetreatState">Retreat Mode: OFF (auto)</div>
+        </div>
+
+        <div class="item" style="margin:0;">
+          <div class="split">
+            <div class="tag">Defender</div>
+            <button class="btn-warn" id="toggleDefRetreatBtn" style="flex:0 0 auto; padding:8px 10px;">Toggle Retreat</button>
+          </div>
+          <div class="muted tiny" id="defSummary">Good 0 • Broken 0 • KIA 0 • Loss 0%</div>
+          <div class="muted tiny" id="defRetreatState">Retreat Mode: OFF (auto)</div>
+        </div>
+      </div>
+
+      <div class="muted tiny" style="margin-top:8px;">
+        Auto Retreat triggers if losses ≥ 30% OR Broken ≥ Good (per side). When ON, that side gets +2 to Movement rolls and movement priority becomes fallback/OBJ/retreat edge.
+      </div>
+
+      <div class="hr"></div>
+
+      <h2 style="margin:0 0 10px 0; font-size:15px;">Add Stack / Team</h2>
+
+      <div class="two">
+        <div>
+          <label>Name</label>
+          <input id="stackName" placeholder="e.g., G1: 2x 4-6-7 + LMG" />
+        </div>
+        <div>
+          <label>Side</label>
+          <select id="stackSide">
+            <option value="attacker">Attacker</option>
+            <option value="defender">Defender</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div>
+          <label>Type</label>
+          <select id="stackType">
+            <option value="infantry">Infantry (SMC/MMC)</option>
+            <option value="vehicle">Vehicle</option>
+            <option value="gun">Gun / 5/8&quot; Artillery (non-mover)</option>
+          </select>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="stackStatus">
+            <option value="good" selected>Good</option>
+            <option value="broken">Broken</option>
+            <option value="kia">KIA (removed)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div>
+          <label>Starts in trench/fortification?</label>
+          <select id="inFort">
+            <option value="no">No</option>
+            <option value="yes">Yes (-1)</option>
+          </select>
+        </div>
+        <div>
+          <label>Keep Moving counter?</label>
+          <select id="keepMoving">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:10px;">
+        <div>
+          <label>Non-mover / Withdrawer?</label>
+          <select id="specialMove">
+            <option value="normal">Normal</option>
+            <option value="nonmover">Non-mover (until rout / as you decide)</option>
+            <option value="withdraw">Withdraw on LOS (e.g., trucks)</option>
+          </select>
+        </div>
+        <div>
+          <label>Team / Formation label (optional)</label>
+          <input id="teamLabel" placeholder="e.g., Left Wing, Platoon A" />
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label>Notes (LOS, nearest OBJ, range, etc.)</label>
+        <input id="stackNotes" placeholder="e.g., LOS: no; nearest OBJ: Stone R6; AFV in SW range: yes" />
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-good" id="addStackBtn">Add</button>
+        <button id="rollAllMoveBtn">Roll All Movement</button>
+        <button id="rollAllFireBtn">Roll All Fire</button>
+      </div>
+
+      <div class="muted tiny" style="margin-top:10px;">
+        Notes like “LOS: yes/no” are optional; the app won’t calculate LOS or ranges. It just outputs consistent AI orders + modifiers and logs everything.
+      </div>
+    </div>
+
+    <!-- RIGHT: STACK LIST + LOG -->
+    <div class="card">
+      <div class="split">
+        <div>
+          <h2 style="margin:0; font-size:15px;">Stacks / Teams</h2>
+          <div class="muted">Status matters: KIA stacks are skipped; Broken stacks won’t fire; movement notes remind you about Retro MF limits.</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div id="stackList" class="list"></div>
+
+      <div class="hr"></div>
+
+      <div class="split">
+        <h2 style="margin:0; font-size:15px;">Turn Log</h2>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="btn-warn" id="copyLogBtn">Copy</button>
+          <button class="btn-bad" id="clearLogBtn">Clear</button>
+        </div>
+      </div>
+
+      <div id="log" class="log"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ---------- Dice ----------
+  const d = (n) => Math.floor(Math.random() * n) + 1;
+  const roll2d6 = () => d(6) + d(6);
+
+  // ---------- AI Tables ----------
+  function movementOutcome(total) {
+    if (total <= 4) return { kind: "move", addKeep: true, hesMod: 0 };
+    if (total === 5) return { kind: "move", addKeep: false, hesMod: 0 };
+    if (total === 6) return { kind: "move", addKeep: false, hesMod: +1 };
+    if (total === 7) return { kind: "move", addKeep: false, hesMod: +2 };
+    return { kind: "nomove", addKeep: false, hesMod: 0 };
+  }
+
+  function fireOutcome(dr) {
+    switch (dr) {
+      case 1: return "Nearest broken enemy, else nearest target";
+      case 2: return "Nearest broken enemy, else highest FP target";
+      case 3: return "Nearest broken enemy, else lowest FP target";
+      case 4: return "AFV if within SW range, else nearest target";
+      case 5: return "AFV if within SW range, else highest FP target";
+      case 6: return "AFV if within SW range, else lowest FP target";
+    }
+  }
+
+  const randomEvents = {
+    1: "Add Sniper within LOS of furthest forward MMC.",
+    2: "Ambush: Place 2 elite MMC + 1 Demo Charge adjacent to furthest forward enemy unit.",
+    3: "Minefield/IED: Furthest forward unit suffers 12-column IFT attack (no modifiers). Doubles immobilize vehicles too. Defender ignores this Event.",
+    4: "Barrage: Furthest forward enemy unit suffers immediate OBA on their hex, 20-column IFT, no delay; roll for on-target.",
+    5: "Random vehicle immobilized for this turn. If it has a red movement factor, immobilized for the rest of the game.",
+    6: "Weather change: Rain for rest of scenario OR sudden snow/desert dust per scenario.",
+    7: "Panic: If affected player has lost >30% of units, morale and ELR drop by 1.",
+    8: "Leadership Crisis: Affected player loses all Leader Hesitation DRM for this turn.",
+    9: "Fire: Random building or Woods/Orchard ignites; spreads 1 hex (only through Building/Woods/Orchard). Fire attacks occupants on 4-column at start of each Fire Phase. KIA destroys vehicles.",
+    10:"Nothing special."
+  };
+
+  // ---------- State ----------
+  const state = {
+    turn: 1,
+    phase: "Setup",
+    p1Label: "Player 1",
+    p2Label: "Player 2",
+    attackerDRM: 0,
+    defenderDRM: -2,
+    scenarioNote: "",
+    eventBias: "none",
+    stacks: [], // {id, name, side, type, status, inFort, keepMoving, specialMove, team, notes}
+    retreatOverride: { attacker: null, defender: null } // null=auto, true=force ON, false=force OFF
+  };
+
+  const els = {
+    turnPill: document.getElementById("turnPill"),
+    phasePill: document.getElementById("phasePill"),
+    countPill: document.getElementById("countPill"),
+    log: document.getElementById("log"),
+    stackList: document.getElementById("stackList"),
+
+    p1Label: document.getElementById("p1Label"),
+    p2Label: document.getElementById("p2Label"),
+    attackerDRM: document.getElementById("attackerDRM"),
+    defenderDRM: document.getElementById("defenderDRM"),
+    scenarioNote: document.getElementById("scenarioNote"),
+    eventBias: document.getElementById("eventBias"),
+
+    attSummary: document.getElementById("attSummary"),
+    defSummary: document.getElementById("defSummary"),
+    attRetreatState: document.getElementById("attRetreatState"),
+    defRetreatState: document.getElementById("defRetreatState"),
+
+    stackName: document.getElementById("stackName"),
+    stackSide: document.getElementById("stackSide"),
+    stackType: document.getElementById("stackType"),
+    stackStatus: document.getElementById("stackStatus"),
+    inFort: document.getElementById("inFort"),
+    keepMoving: document.getElementById("keepMoving"),
+    specialMove: document.getElementById("specialMove"),
+    teamLabel: document.getElementById("teamLabel"),
+    stackNotes: document.getElementById("stackNotes"),
+  };
+
+  function persistFromInputs(){
+    state.p1Label = els.p1Label.value.trim() || "Player 1";
+    state.p2Label = els.p2Label.value.trim() || "Player 2";
+    state.attackerDRM = parseInt(els.attackerDRM.value, 10);
+    state.defenderDRM = parseInt(els.defenderDRM.value, 10);
+    state.scenarioNote = els.scenarioNote.value.trim();
+    state.eventBias = els.eventBias.value;
+  }
+
+  function syncInputs(){
+    els.p1Label.value = state.p1Label;
+    els.p2Label.value = state.p2Label;
+    els.attackerDRM.value = String(state.attackerDRM);
+    els.defenderDRM.value = String(state.defenderDRM);
+    els.scenarioNote.value = state.scenarioNote;
+    els.eventBias.value = state.eventBias;
+  }
+
+  function renderHeader(){
+    els.turnPill.textContent = state.turn;
+    els.phasePill.textContent = state.phase;
+    els.countPill.textContent = state.stacks.length;
+    renderSideSummaries();
+  }
+
+  function logLine(text){
+    const prefix = `[T${state.turn} ${state.phase}] `;
+    els.log.textContent += prefix + text + "\n";
+    els.log.scrollTop = els.log.scrollHeight;
+  }
+
+  function emoji(txt, kind){
+    if (kind === "good") return `✅ ${txt}`;
+    if (kind === "warn") return `⚠️ ${txt}`;
+    if (kind === "bad") return `🛑 ${txt}`;
+    if (kind === "k") return `✳️ ${txt}`;
+    return txt;
+  }
+
+  // ---------- Status + Retreat ----------
+  function sideCounts(side){
+    const stacks = state.stacks.filter(s => s.side === side);
+    const good = stacks.filter(s => s.status === "good").length;
+    const broken = stacks.filter(s => s.status === "broken").length;
+    const kia = stacks.filter(s => s.status === "kia").length;
+    const total = good + broken + kia;
+    const lossPct = total ? (kia / total) : 0;
+    return { good, broken, kia, total, lossPct };
+  }
+
+  function autoRetreat(side){
+    const c = sideCounts(side);
+    const trigLoss = c.lossPct >= 0.30;
+    const trigBroken = c.broken >= c.good && c.total > 0;
+    return trigLoss || trigBroken;
+  }
+
+  function retreatMode(side){
+    const ov = state.retreatOverride[side];
+    if (ov === true) return true;
+    if (ov === false) return false;
+    return autoRetreat(side);
+  }
+
+  function retreatLabel(side){
+    const ov = state.retreatOverride[side];
+    if (ov === true) return "ON (manual)";
+    if (ov === false) return "OFF (manual)";
+    return retreatMode(side) ? "ON (auto)" : "OFF (auto)";
+  }
+
+  function renderSideSummaries(){
+    const a = sideCounts("attacker");
+    const d = sideCounts("defender");
+
+    const pct = (x) => Math.round(x * 100);
+
+    els.attSummary.textContent = `Good ${a.good} • Broken ${a.broken} • KIA ${a.kia} • Loss ${pct(a.lossPct)}%`;
+    els.defSummary.textContent = `Good ${d.good} • Broken ${d.broken} • KIA ${d.kia} • Loss ${pct(d.lossPct)}%`;
+
+    els.attRetreatState.textContent = `Retreat Mode: ${retreatLabel("attacker")}`;
+    els.defRetreatState.textContent = `Retreat Mode: ${retreatLabel("defender")}`;
+  }
+
+  function toggleRetreat(side){
+    const cur = state.retreatOverride[side];
+    // cycle: null(auto) -> true -> false -> null
+    let next = null;
+    if (cur === null) next = true;
+    else if (cur === true) next = false;
+    else next = null;
+    state.retreatOverride[side] = next;
+    renderHeader();
+    logLine(`${emoji("RETREAT MODE", "k")}: ${side.toUpperCase()} now ${retreatLabel(side)}.`);
+  }
+
+  // ---------- Movement helpers ----------
+  function movementDRM(stack){
+    let drm = 0;
+    drm += (stack.side === "attacker") ? state.attackerDRM : state.defenderDRM;
+    if (stack.inFort) drm += -1;
+    if (retreatMode(stack.side)) drm += +2; // retreat makes "no move" more common + slows aggression
+    return drm;
+  }
+
+  function classifyHesitationModifier(stack, baseHesMod){
+    let hes = baseHesMod;
+    if (stack.inFort) hes += -1;
+    // Reverse sign for armor
+    if (stack.type === "vehicle") hes = -hes;
+    return hes;
+  }
+
+  function movementIntentText(stack){
+    if (retreatMode(stack.side)) {
+      return "RETREAT: toward nearest friendly OBJ / fallback line; else retreat edge; avoid open exposure as you see fit";
+    }
+    return "ADVANCE: toward nearest visible enemy in LOS; else nearest enemy-held OBJ; else nearest enemy";
+  }
+
+  function tryPlaceKeepMoving(stack, out){
+    // Only place if 2-4 result AND no visible enemy in LOS.
+    // App can't compute LOS; we accept a user note heuristic.
+    const losNo = /los\s*:\s*no|no\s*los|los\?\s*no/i.test(stack.notes || "");
+    const losYes = /los\s*:\s*yes|has\s*los|visible/i.test(stack.notes || "");
+
+    if (out.kind === "move" && out.addKeep) {
+      if (!losYes && (losNo || true)) { // default assume no LOS unless user explicitly says yes
+        stack.keepMoving = true;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function rollMovementForStack(stack){
+    if (stack.status === "kia") {
+      logLine(`${stack.name}: skipped (Status = KIA).`);
+      return;
+    }
+
+    if (stack.type === "gun") {
+      logLine(`${stack.name}: ${emoji("No move (Gun/5⁄8\")", "warn")} — per rules.`);
+      return;
+    }
+
+    // ✅ Broken always takes precedence over Non-mover / Withdraw
+    if (stack.status === "broken") {
+      logLine(`${stack.name}: ${emoji("ROUT", "warn")} — broken. Resolve Rout per Retro (4 MF toward nearest non-open; cannot move closer to enemy; eliminated if routing through open in LOS/range).`);
+      return;
+    }
+
+    if (stack.specialMove === "nonmover") {
+      logLine(`${stack.name}: ${emoji("No move (designated non-mover)", "warn")}.`);
+      return;
+    }
+
+  // ...keep the rest of the function unchanged...
+
+    const raw = roll2d6();
+    const drm = movementDRM(stack);
+    const total = raw + drm;
+
+    const out = movementOutcome(total);
+    const addedKeep = tryPlaceKeepMoving(stack, out);
+
+    const hes = classifyHesitationModifier(stack, out.hesMod);
+
+    const sideLabel = stack.side === "attacker" ? "Attacker" : "Defender";
+    const km = (stack.keepMoving ? "KeepMoving=Y" : "KeepMoving=N");
+    const moveTxt =
+      out.kind === "move"
+        ? `${emoji("MOVE", "good")} (max speed) → ${movementIntentText(stack)}`
+        : `${emoji("NO MOVE", "warn")} → must fire if able`;
+
+    const hesTxt = out.kind === "move"
+      ? `Hesitation Mod ${hes >= 0 ? "+" : ""}${hes}`
+      : `Fire later`;
+
+    logLine(`${stack.name} [${sideLabel}] 2D6=${raw}${drm ? (drm>0?`+${drm}`:`${drm}`) : ""} → ${total}: ${moveTxt}; ${hesTxt}${addedKeep ? `; ${emoji("placed Keep Moving", "k")}` : ""} (${km})`);
+  }
+
+  // ---------- Fire ----------
+  function rollFireForStack(stack){
+    if (stack.status === "kia") {
+      logLine(`${stack.name}: skipped (Status = KIA).`);
+      return;
+    }
+    if (stack.status === "broken") {
+      logLine(`${stack.name}: ${emoji("BROKEN", "warn")} — no fire (broken).`);
+      return;
+    }
+
+    if (stack.specialMove === "withdraw") {
+      logLine(`${stack.name}: ${emoji("Withdraw behavior", "warn")} — if LOS to enemy, withdraw per your scenario note. Otherwise resolve fire normally.`);
+    }
+
+    const dr = d(6);
+    const target = fireOutcome(dr);
+    logLine(`${stack.name}: 1D6=${dr} → ${emoji("FIRE TARGET", "good")}: ${target}. (All in stack at same target; form largest Fire Group with common target.)`);
+  }
+
+  // ---------- Random Event ----------
+  function rollRandomEvent(){
+    const affected = (state.turn % 2 === 1) ? state.p1Label : state.p2Label;
+    const r = d(10);
+    const bias = state.eventBias;
+    const text = randomEvents[r] || "Unknown event.";
+    logLine(`${emoji("RANDOM EVENT", "k")}: D10=${r} → affects ${emoji(affected, "warn")}: ${text}${bias !== "none" ? ` (Bias reminder: ${bias})` : ""}`);
+  }
+
+  // ---------- UI render ----------
+  function statusChipClass(status){
+    if (status === "good") return "statusChip statusGood";
+    if (status === "broken") return "statusChip statusBroken";
+    return "statusChip statusKIA";
+  }
+  function statusLabel(status){
+    if (status === "good") return "Good";
+    if (status === "broken") return "Broken";
+    return "KIA";
+  }
+
+  function renderStacks(){
+    els.stackList.innerHTML = "";
+
+    state.stacks.forEach((s) => {
+      const div = document.createElement("div");
+      div.className = "item";
+
+      const top = document.createElement("div");
+      top.className = "split";
+
+      const title = document.createElement("h3");
+      title.textContent = s.name;
+
+      const status = document.createElement("span");
+      status.className = statusChipClass(s.status);
+      status.textContent = statusLabel(s.status);
+
+      top.append(title, status);
+
+      const meta = document.createElement("div");
+      meta.className = "tag";
+      meta.textContent =
+        `${s.side.toUpperCase()} • ${s.type} • ` +
+        `Fort=${s.inFort ? "Y" : "N"} • KeepMoving=${s.keepMoving ? "Y" : "N"} • Special=${s.specialMove}` +
+        (s.team ? ` • Team=${s.team}` : "");
+
+      const notes = document.createElement("div");
+      notes.className = "muted tiny";
+      notes.textContent = s.notes ? `Notes: ${s.notes}` : "Notes: (none)";
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const moveBtn = document.createElement("button");
+      moveBtn.textContent = "Roll Movement (2D6)";
+      moveBtn.onclick = () => { persistFromInputs(); rollMovementForStack(s); renderStacks(); renderHeader(); };
+
+      const fireBtn = document.createElement("button");
+      fireBtn.textContent = "Roll Fire (1D6)";
+      fireBtn.onclick = () => { rollFireForStack(s); };
+
+      const toggleKM = document.createElement("button");
+      toggleKM.textContent = s.keepMoving ? "Remove Keep Moving" : "Add Keep Moving";
+      toggleKM.className = "btn-warn";
+      toggleKM.onclick = () => { s.keepMoving = !s.keepMoving; renderStacks(); };
+
+      const setGood = document.createElement("button");
+      setGood.textContent = "Mark Good";
+      setGood.className = "btn-good";
+      setGood.onclick = () => { s.status = "good"; renderStacks(); renderHeader(); logLine(`${s.name}: status set to GOOD.`); };
+
+      const setBroken = document.createElement("button");
+      setBroken.textContent = "Mark Broken";
+      setBroken.className = "btn-warn";
+      setBroken.onclick = () => { s.status = "broken"; renderStacks(); renderHeader(); logLine(`${s.name}: status set to BROKEN.`); };
+
+      const setKIA = document.createElement("button");
+      setKIA.textContent = "Mark KIA";
+      setKIA.className = "btn-bad";
+      setKIA.onclick = () => { s.status = "kia"; s.keepMoving = false; renderStacks(); renderHeader(); logLine(`${s.name}: status set to KIA (removed).`); };
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "Edit";
+      editBtn.onclick = () => editStack(s.id);
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.className = "btn-bad";
+      delBtn.onclick = () => { state.stacks = state.stacks.filter(x => x.id !== s.id); renderStacks(); renderHeader(); };
+
+      actions.append(moveBtn, fireBtn, toggleKM, setGood, setBroken, setKIA, editBtn, delBtn);
+
+      div.append(top, meta, notes, actions);
+      els.stackList.appendChild(div);
+    });
+
+    renderHeader();
+  }
+
+  function addStack(){
+    const name = els.stackName.value.trim();
+    if (!name) return alert("Give the stack/team a name.");
+
+    const stack = {
+      id: crypto.randomUUID(),
+      name,
+      side: els.stackSide.value,
+      type: els.stackType.value,
+      status: els.stackStatus.value,
+      inFort: els.inFort.value === "yes",
+      keepMoving: els.keepMoving.value === "yes",
+      specialMove: els.specialMove.value,
+      team: els.teamLabel.value.trim(),
+      notes: els.stackNotes.value.trim()
+    };
+
+    state.stacks.push(stack);
+
+    els.stackName.value = "";
+    els.teamLabel.value = "";
+    els.stackNotes.value = "";
+    els.stackStatus.value = "good";
+
+    renderStacks();
+    logLine(`Added stack: ${stack.name} (${stack.side}, ${stack.type}, status=${stack.status}).`);
+  }
+
+  function editStack(id){
+    const s = state.stacks.find(x => x.id === id);
+    if (!s) return;
+
+    const newName = prompt("Name:", s.name);
+    if (newName !== null) s.name = newName.trim() || s.name;
+
+    const newTeam = prompt("Team/Formation label (optional):", s.team || "");
+    if (newTeam !== null) s.team = newTeam.trim();
+
+    const newNotes = prompt("Notes (LOS/OBJ/etc.):", s.notes || "");
+    if (newNotes !== null) s.notes = newNotes.trim();
+
+    const st = prompt('Status? Type: good / broken / kia', s.status);
+    if (st !== null) {
+      const v = st.trim().toLowerCase();
+      if (["good","broken","kia"].includes(v)) s.status = v;
+    }
+
+    const fort = confirm("Starts in trench/fortification? OK=Yes, Cancel=No");
+    s.inFort = fort;
+
+    const km = confirm("Has Keep Moving counter? OK=Yes, Cancel=No");
+    s.keepMoving = km;
+
+    renderStacks();
+  }
+
+  function setPhase(p){
+    state.phase = p;
+    renderHeader();
+    logLine(`Phase set to: ${p}.`);
+  }
+
+  function nextTurn(){
+    state.turn += 1;
+    state.phase = "Setup";
+    renderHeader();
+    logLine(`--- Next Turn: ${state.turn} ---`);
+  }
+
+  // ---------- Save / Load / Reset ----------
+  function save(){
+    persistFromInputs();
+    localStorage.setItem("retroSoloAI", JSON.stringify(state));
+    logLine("Saved state to localStorage.");
+  }
+
+  function load(){
+    const raw = localStorage.getItem("retroSoloAI");
+    if (!raw) {
+      logLine("No saved state found — starting fresh.");
+      return;
+    }
+    const loaded = JSON.parse(raw);
+    Object.assign(state, loaded);
+    syncInputs();
+    renderHeader();
+    renderStacks();
+    logLine("Loaded state from localStorage.");
+  }
+
+  function resetAll(){
+    if (!confirm("Reset everything (don't delete saved state)?")) return;
+    //localStorage.removeItem("retroSoloAI");
+
+    state.turn = 1;
+    state.phase = "Setup";
+    state.p1Label = "Player 1";
+    state.p2Label = "Player 2";
+    state.attackerDRM = 0;
+    state.defenderDRM = -2;
+    state.scenarioNote = "";
+    state.eventBias = "none";
+    state.stacks = [];
+    state.retreatOverride = { attacker: null, defender: null };
+
+    els.log.textContent = "";
+    syncInputs();
+    renderHeader();
+    renderStacks();
+    logLine("Reset complete.");
+  }
+
+  // ---------- Bulk rolls ----------
+  function rollAllMovement(){
+    persistFromInputs();
+    state.stacks.forEach(s => rollMovementForStack(s));
+    renderStacks();
+  }
+
+  function rollAllFire(){
+    state.stacks.forEach(s => rollFireForStack(s));
+  }
+
+  // ---------- Wire up ----------
+  document.getElementById("addStackBtn").onclick = addStack;
+
+  document.getElementById("rollAllMoveBtn").onclick = rollAllMovement;
+  document.getElementById("rollAllFireBtn").onclick = rollAllFire;
+
+  document.getElementById("rollEventBtn").onclick = () => { persistFromInputs(); rollRandomEvent(); };
+
+  document.getElementById("nextTurnBtn").onclick = nextTurn;
+  document.getElementById("setMovementBtn").onclick = () => setPhase("Movement");
+  document.getElementById("setFireBtn").onclick = () => setPhase("Fire");
+  document.getElementById("setCCBtn").onclick = () => setPhase("Close Combat");
+
+  document.getElementById("saveBtn").onclick = save;
+  document.getElementById("loadBtn").onclick = load;
+  document.getElementById("resetBtn").onclick = resetAll;
+
+  document.getElementById("copyLogBtn").onclick = async () => {
+    try { await navigator.clipboard.writeText(els.log.textContent); alert("Log copied."); }
+    catch { alert("Copy failed (browser permissions)."); }
+  };
+  document.getElementById("clearLogBtn").onclick = () => { if(confirm("Clear log?")) els.log.textContent = ""; };
+
+  document.getElementById("toggleAttRetreatBtn").onclick = () => toggleRetreat("attacker");
+  document.getElementById("toggleDefRetreatBtn").onclick = () => toggleRetreat("defender");
+
+  // Init
+  syncInputs();
+  renderHeader();
+  renderStacks();
+  logLine("Ready. Add stacks/teams, set postures, track status (Good/Broken/KIA), then roll Movement/Fire/Event.");
+</script>
+</body>
+</html>
