@@ -4,102 +4,115 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Retro Solo AI Referee</title>
+
   <style>
-    :root{
-      --bg:#0b0f14; --panel:#111826; --panel2:#0f1622; --txt:#e6edf3; --muted:#9fb0c0;
-      --accent:#6ee7ff; --good:#34d399; --warn:#fbbf24; --bad:#fb7185; --line:#243244;
-      --chip:#162235;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    }
+    /* Minimum CSS: white background, black text */
     *{ box-sizing:border-box; }
-    body{ margin:0; font-family:var(--sans); background:linear-gradient(180deg,#070a0f,#0b0f14); color:var(--txt); }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:#fff;
+      color:#000;
+    }
     header{
-      padding:16px 18px; border-bottom:1px solid var(--line);
-      background:linear-gradient(180deg,#0d1420,#0b0f14);
+      padding:12px 14px;
+      border-bottom:1px solid #000;
+      background:#fff;
       position:sticky; top:0; z-index:10;
     }
-    header h1{ margin:0; font-size:18px; letter-spacing:.2px; }
-    header .sub{ color:var(--muted); font-size:12px; margin-top:4px; }
-    .wrap{ padding:16px; max-width:1180px; margin:0 auto; }
-    .grid{ display:grid; grid-template-columns: 400px 1fr; gap:14px; }
+    header h1{ margin:0; font-size:18px; font-weight:700; }
+    header .sub{ margin-top:4px; font-size:12px; }
+
+    .wrap{ padding:14px; max-width:1180px; margin:0 auto; }
+    .grid{ display:grid; grid-template-columns: 400px 1fr; gap:12px; }
     @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
 
     .card{
-      background:linear-gradient(180deg,var(--panel),var(--panel2));
-      border:1px solid var(--line);
-      border-radius:14px; padding:14px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      border:1px solid #000;
+      padding:12px;
+      background:#fff;
     }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .row > *{ flex: 1 1 auto; }
-    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
-    input, select, textarea{
-      width:100%; padding:10px 10px; border-radius:10px;
-      border:1px solid var(--line); background:#0a1220; color:var(--txt);
-      outline:none;
+
+    label{ display:block; font-size:12px; margin:10px 0 6px; }
+    input, select{
+      width:100%;
+      padding:8px;
+      border:1px solid #000;
+      background:#fff;
+      color:#000;
+      border-radius:0;
     }
-    textarea{ min-height:90px; resize:vertical; font-family:var(--mono); font-size:12px; }
+
     button{
-      padding:10px 12px; border-radius:12px; border:1px solid var(--line);
-      background:#0e1a2c; color:var(--txt); cursor:pointer;
-      transition: transform .05s ease, background .2s ease;
+      padding:8px 10px;
+      border:1px solid #000;
+      background:#fff;
+      color:#000;
+      cursor:pointer;
       font-weight:600;
     }
-    button:hover{ background:#132443; }
+    button:hover{ background:#f2f2f2; }
     button:active{ transform: translateY(1px); }
-    .btn-accent{ border-color:#1d4ed8; background:#0b2a55; }
-    .btn-accent:hover{ background:#0d3570; }
-    .btn-good{ border-color:#065f46; background:#062a22; }
-    .btn-good:hover{ background:#08362d; }
-    .btn-warn{ border-color:#92400e; background:#2a1b08; }
-    .btn-warn:hover{ background:#3a240a; }
-    .btn-bad{ border-color:#7f1d1d; background:#2a0b0b; }
-    .btn-bad:hover{ background:#3a0d0d; }
 
-    .pill{
-      display:inline-flex; gap:6px; align-items:center;
-      padding:6px 10px; border-radius:999px;
-      background:var(--chip); border:1px solid var(--line);
-      font-size:12px; color:var(--muted);
-    }
-    .pill strong{ color:var(--txt); font-family:var(--mono); font-weight:700; }
-    .split{ display:flex; justify-content:space-between; gap:10px; align-items:center; }
-    .muted{ color:var(--muted); font-size:12px; }
-    .hr{ height:1px; background:var(--line); margin:12px 0; }
-    .list{ display:flex; flex-direction:column; gap:10px; }
-    .item{
-      border:1px solid var(--line); border-radius:12px; padding:10px;
-      background:#0a1220;
-    }
-    .item h3{ margin:0 0 6px 0; font-size:14px; }
-    .tag{ font-family:var(--mono); font-size:11px; color:var(--muted); }
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-    .log{
-      font-family:var(--mono); font-size:12px; line-height:1.45;
-      white-space:pre-wrap;
-      background:#070c14; border:1px solid var(--line);
-      border-radius:12px; padding:12px; min-height:280px;
-      max-height:520px; overflow:auto;
-    }
-    .tiny{ font-size:11px; }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .row > *{ flex: 1 1 auto; }
+    .split{ display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
     .two{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     @media (max-width: 620px){ .two{ grid-template-columns:1fr; } }
 
+    .hr{ height:1px; background:#000; margin:12px 0; }
+    .muted{ font-size:12px; }
+    .tiny{ font-size:11px; }
+
+    .pill{
+      display:inline-flex; gap:6px; align-items:center;
+      padding:4px 8px;
+      border:1px solid #000;
+      font-size:12px;
+    }
+    .pill strong{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace; }
+
+    .list{ display:flex; flex-direction:column; gap:10px; }
+    .item{ border:1px solid #000; padding:10px; background:#fff; }
+    .item h3{ margin:0 0 6px 0; font-size:14px; }
+    .tag{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace; font-size:11px; }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+
+    .log{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-size:12px;
+      line-height:1.45;
+      white-space:pre-wrap;
+      border:1px solid #000;
+      padding:10px;
+      min-height:280px;
+      max-height:520px;
+      overflow:auto;
+      background:#fff;
+    }
+
     .statusChip{
       display:inline-flex; align-items:center; gap:6px;
-      padding:4px 10px; border-radius:999px; border:1px solid var(--line);
-      background:#0d1730; font-size:12px; color:var(--muted);
+      padding:2px 8px;
+      border:1px solid #000;
+      font-size:12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
     }
-    .statusGood{ border-color:#065f46; color:#a7f3d0; }
-    .statusBroken{ border-color:#92400e; color:#fde68a; }
-    .statusKIA{ border-color:#7f1d1d; color:#fecaca; }
+
+    /* Narrow-screen tuning so controls stay usable on phones */
+    @media (max-width: 620px){
+      .wrap{ padding:10px; }
+      .card{ padding:10px; }
+      .row > *{ flex: 1 1 100%; }
+      .actions > *{ flex: 1 1 100%; }
+      .log{ min-height:200px; max-height:45vh; }
+    }
   </style>
 </head>
 <body>
 <header>
   <h1>Retro Solo AI Referee</h1>
-  <div class="sub">Movement (2D6), Fire (1D6), Random Events (D10), “Keep Moving”, plus unit status (Good/Broken/KIA) + optional mass retreat.</div>
+  <div class="sub">Movement 2D6 • Fire 1D6 • Random Events D10 • Keep Advancing • Status + Retreat</div>
 </header>
 
 <div class="wrap">
@@ -113,9 +126,9 @@
           <div class="pill">Phase <strong id="phasePill">Setup</strong></div>
         </div>
         <div class="row" style="justify-content:flex-end;">
-          <button class="btn-warn" id="saveBtn">Save</button>
-          <button class="btn-warn" id="loadBtn">Load</button>
-          <button class="btn-bad" id="resetBtn">Reset</button>
+          <button id="saveBtn">Save</button>
+          <button id="loadBtn">Load</button>
+          <button id="resetBtn">Reset</button>
         </div>
       </div>
 
@@ -132,7 +145,7 @@
         </div>
       </div>
 
-      <div class="two" style="margin-top:10px;">
+      <div class="two">
         <div>
           <label>Attacker Posture (Movement)</label>
           <select id="attackerDRM">
@@ -155,7 +168,7 @@
         </div>
       </div>
 
-      <div class="two" style="margin-top:10px;">
+      <div class="two">
         <div>
           <label>Scenario note / house flags</label>
           <input id="scenarioNote" placeholder="e.g., Guards Counterattack; snow on event 6; trucks withdraw" />
@@ -172,50 +185,50 @@
       <div class="hr"></div>
 
       <div class="row">
-        <button class="btn-accent" id="nextTurnBtn">Next Turn</button>
-        <button class="btn-accent" id="setMovementBtn">Movement Phase</button>
-        <button class="btn-accent" id="setFireBtn">Fire Phase</button>
-        <button class="btn-accent" id="setCCBtn">Close Combat Phase</button>
+        <button id="nextTurnBtn">Next Turn</button>
+        <button id="setMovementBtn">Movement</button>
+        <button id="setFireBtn">Fire</button>
+        <button id="setCCBtn">Close Combat</button>
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <button class="btn-good" id="rollEventBtn">Roll Random Event (D10)</button>
+        <button id="rollEventBtn">Roll Random Event (D10)</button>
       </div>
 
       <div class="hr"></div>
 
       <div class="split">
-        <h2 style="margin:0; font-size:15px;">Side Status + Retreat</h2>
-        <div class="pill">Tracked <strong id="countPill">0</strong></div>
+        <h2 style="margin:0; font-size:14px;">Side Status + Retreat</h2>
       </div>
 
       <div class="two" style="margin-top:10px;">
         <div class="item" style="margin:0;">
           <div class="split">
             <div class="tag">Attacker</div>
-            <button class="btn-warn" id="toggleAttRetreatBtn" style="flex:0 0 auto; padding:8px 10px;">Toggle Retreat</button>
+            <button id="toggleAttRetreatBtn" style="flex:0 0 auto; padding:6px 10px;">Toggle Retreat</button>
           </div>
-          <div class="muted tiny" id="attSummary">Good 0 • Broken 0 • KIA 0 • Loss 0%</div>
-          <div class="muted tiny" id="attRetreatState">Retreat Mode: OFF (auto)</div>
+          <div class="tiny" id="attSummary">Good 0 • Broken 0 • KIA 0 • Loss 0%</div>
+          <div class="tiny" id="attRetreatState">Retreat Mode: OFF (auto)</div>
         </div>
 
         <div class="item" style="margin:0;">
           <div class="split">
             <div class="tag">Defender</div>
-            <button class="btn-warn" id="toggleDefRetreatBtn" style="flex:0 0 auto; padding:8px 10px;">Toggle Retreat</button>
+            <button id="toggleDefRetreatBtn" style="flex:0 0 auto; padding:6px 10px;">Toggle Retreat</button>
           </div>
-          <div class="muted tiny" id="defSummary">Good 0 • Broken 0 • KIA 0 • Loss 0%</div>
-          <div class="muted tiny" id="defRetreatState">Retreat Mode: OFF (auto)</div>
+          <div class="tiny" id="defSummary">Good 0 • Broken 0 • KIA 0 • Loss 0%</div>
+          <div class="tiny" id="defRetreatState">Retreat Mode: OFF (auto)</div>
         </div>
       </div>
 
-      <div class="muted tiny" style="margin-top:8px;">
-        Auto Retreat triggers if losses ≥ 30% OR Broken ≥ Good (per side). When ON, that side gets +2 to Movement rolls and movement priority becomes fallback/OBJ/retreat edge.
+      <div class="tiny" style="margin-top:8px;">
+        Auto Retreat triggers if losses ≥ 30% OR Broken ≥ Good (per side).
+        When ON, that side gets +2 to Movement rolls and movement intent becomes fallback/OBJ/retreat edge.
       </div>
 
       <div class="hr"></div>
 
-      <h2 style="margin:0 0 10px 0; font-size:15px;">Add Stack / Team</h2>
+      <h2 style="margin:0 0 10px 0; font-size:14px;">Add Stack / Team</h2>
 
       <div class="two">
         <div>
@@ -231,7 +244,7 @@
         </div>
       </div>
 
-      <div class="two" style="margin-top:10px;">
+      <div class="two">
         <div>
           <label>Type</label>
           <select id="stackType">
@@ -250,7 +263,7 @@
         </div>
       </div>
 
-      <div class="two" style="margin-top:10px;">
+      <div class="two">
         <div>
           <label>Starts in trench/fortification?</label>
           <select id="inFort">
@@ -259,7 +272,7 @@
           </select>
         </div>
         <div>
-          <label>Keep Moving counter?</label>
+          <label>Keep Advancing counter?</label>
           <select id="keepMoving">
             <option value="no">No</option>
             <option value="yes">Yes</option>
@@ -267,7 +280,7 @@
         </div>
       </div>
 
-      <div class="two" style="margin-top:10px;">
+      <div class="two">
         <div>
           <label>Non-mover / Withdrawer?</label>
           <select id="specialMove">
@@ -282,19 +295,19 @@
         </div>
       </div>
 
-      <div style="margin-top:10px;">
+      <div>
         <label>Notes (LOS, nearest OBJ, range, etc.)</label>
         <input id="stackNotes" placeholder="e.g., LOS: no; nearest OBJ: Stone R6; AFV in SW range: yes" />
       </div>
 
       <div class="row" style="margin-top:10px;">
-        <button class="btn-good" id="addStackBtn">Add</button>
+        <button id="addStackBtn">Add</button>
         <button id="rollAllMoveBtn">Roll All Movement</button>
         <button id="rollAllFireBtn">Roll All Fire</button>
       </div>
 
-      <div class="muted tiny" style="margin-top:10px;">
-        Notes like “LOS: yes/no” are optional; the app won’t calculate LOS or ranges. It just outputs consistent AI orders + modifiers and logs everything.
+      <div class="tiny" style="margin-top:10px;">
+        The app does not compute LOS/range/hex movement. You adjudicate those; it outputs AI orders + modifiers and logs everything.
       </div>
     </div>
 
@@ -302,8 +315,8 @@
     <div class="card">
       <div class="split">
         <div>
-          <h2 style="margin:0; font-size:15px;">Stacks / Teams</h2>
-          <div class="muted">Status matters: KIA stacks are skipped; Broken stacks won’t fire; movement notes remind you about Retro MF limits.</div>
+          <h2 style="margin:0; font-size:14px;">Stacks / Teams</h2>
+          <div class="muted tiny">KIA stacks skipped • Broken stacks ROUT and don’t fire • You adjudicate LOS/range/hex movement.</div>
         </div>
       </div>
 
@@ -314,10 +327,10 @@
       <div class="hr"></div>
 
       <div class="split">
-        <h2 style="margin:0; font-size:15px;">Turn Log</h2>
+        <h2 style="margin:0; font-size:14px;">Turn Log</h2>
         <div class="row" style="justify-content:flex-end;">
-          <button class="btn-warn" id="copyLogBtn">Copy</button>
-          <button class="btn-bad" id="clearLogBtn">Clear</button>
+          <button id="copyLogBtn">Copy</button>
+          <button id="clearLogBtn">Clear</button>
         </div>
       </div>
 
@@ -382,7 +395,6 @@
   const els = {
     turnPill: document.getElementById("turnPill"),
     phasePill: document.getElementById("phasePill"),
-    countPill: document.getElementById("countPill"),
     log: document.getElementById("log"),
     stackList: document.getElementById("stackList"),
 
@@ -430,7 +442,6 @@
   function renderHeader(){
     els.turnPill.textContent = state.turn;
     els.phasePill.textContent = state.phase;
-    els.countPill.textContent = state.stacks.length;
     renderSideSummaries();
   }
 
@@ -447,6 +458,66 @@
     if (kind === "k") return `✳️ ${txt}`;
     return txt;
   }
+
+function resolveDefensiveFire(){
+  logLine("=== AUTOMATIC RETRO Defensive Fire Phase: IGNORE MOVED UNITS ===");
+
+  try {
+    const stacks = Array.isArray(state.stacks) ? state.stacks : [];
+    let considered = 0;
+    let fired = 0;
+
+    for (const stack of stacks) {
+      const st = String(stack.status ?? "").toLowerCase();  // <-- normalize
+      if (st !== "good") continue;
+
+      considered++;
+
+      // Optional: if you ever add other types later, keep this permissive.
+      const dr = d(6);
+      const target = fireOutcome(dr);
+      fired++;
+
+      logLine(`${stack.name}: Defensive Fire 1D6=${dr} → ${target} If not moved & within 3 Hexes`);
+    }
+
+    logLine(`(Defensive Fire) GOOD units considered: ${considered}; fires rolled: ${fired}.`);
+  } catch (e) {
+    logLine(`DEFENSIVE FIRE ERROR: ${e?.message ?? e}`);
+  }
+
+  logLine("=== END DEFENSIVE FIRE ===");
+}
+
+function resolveCloseCombat(){
+  logLine("=== CLOSE COMBAT ADVANCE & CLOSE COMBAT PHASE ===");
+
+  try {
+    const stacks = Array.isArray(state.stacks) ? state.stacks : [];
+    let considered = 0;
+    let fired = 0;
+
+    for (const stack of stacks) {
+      const st = String(stack.status ?? "").toLowerCase();  // <-- normalize
+      if (st !== "good") continue;
+
+      considered++;
+
+      // Optional: if you ever add other types later, keep this permissive.
+      const dr = d(6);
+      const target = fireOutcome(dr);
+      fired++;
+
+      logLine(`${stack.name}: Consider for Close Combat`);
+    }
+
+    logLine(`(Close Combat Fire) GOOD units considered: ${considered}; fires rolled: ${fired}.`);
+  } catch (e) {
+    logLine(`Close Combat FIRE ERROR: ${e?.message ?? e}`);
+  }
+
+  logLine("=== END DEFENSIVE FIRE ===");
+}
 
   // ---------- Status + Retreat ----------
   function sideCounts(side){
@@ -483,7 +554,6 @@
   function renderSideSummaries(){
     const a = sideCounts("attacker");
     const d = sideCounts("defender");
-
     const pct = (x) => Math.round(x * 100);
 
     els.attSummary.textContent = `Good ${a.good} • Broken ${a.broken} • KIA ${a.kia} • Loss ${pct(a.lossPct)}%`;
@@ -495,7 +565,6 @@
 
   function toggleRetreat(side){
     const cur = state.retreatOverride[side];
-    // cycle: null(auto) -> true -> false -> null
     let next = null;
     if (cur === null) next = true;
     else if (cur === true) next = false;
@@ -509,34 +578,31 @@
   function movementDRM(stack){
     let drm = 0;
     drm += (stack.side === "attacker") ? state.attackerDRM : state.defenderDRM;
-    if (stack.inFort) drm += -1;
-    if (retreatMode(stack.side)) drm += +2; // retreat makes "no move" more common + slows aggression
+    if (stack.inFort) drm += +1;
+    if (retreatMode(stack.side)) drm += -2;
     return drm;
   }
 
   function classifyHesitationModifier(stack, baseHesMod){
     let hes = baseHesMod;
     if (stack.inFort) hes += -1;
-    // Reverse sign for armor
-    if (stack.type === "vehicle") hes = -hes;
+    if (stack.type === "vehicle") hes = -hes; // reverse sign for armor
     return hes;
   }
 
   function movementIntentText(stack){
-    if (retreatMode(stack.side)) {
-      return "RETREAT: toward nearest friendly OBJ / fallback line; else retreat edge; avoid open exposure as you see fit";
-    }
-    return "ADVANCE: toward nearest visible enemy in LOS; else nearest enemy-held OBJ; else nearest enemy";
+  if (retreatMode(stack.side)) {
+    return "RETREAT: run away from enemy; maximize distance; prefer cover; avoid moving closer to enemy";
   }
+  return "ADVANCE: toward nearest visible enemy in LOS; else nearest enemy-held OBJ; else nearest enemy";
+}
 
   function tryPlaceKeepMoving(stack, out){
-    // Only place if 2-4 result AND no visible enemy in LOS.
-    // App can't compute LOS; we accept a user note heuristic.
     const losNo = /los\s*:\s*no|no\s*los|los\?\s*no/i.test(stack.notes || "");
     const losYes = /los\s*:\s*yes|has\s*los|visible/i.test(stack.notes || "");
 
     if (out.kind === "move" && out.addKeep) {
-      if (!losYes && (losNo || true)) { // default assume no LOS unless user explicitly says yes
+      if (!losYes && (losNo || true)) {
         stack.keepMoving = true;
         return true;
       }
@@ -555,9 +621,9 @@
       return;
     }
 
-    // ✅ Broken always takes precedence over Non-mover / Withdraw
+    // Broken = ROUT message (overrides non-mover)
     if (stack.status === "broken") {
-      logLine(`${stack.name}: ${emoji("ROUT", "warn")} — broken. Resolve Rout per Retro (4 MF toward nearest non-open; cannot move closer to enemy; eliminated if routing through open in LOS/range).`);
+      logLine(`${stack.name}: ${emoji("ROUT", "warn")} — broken. Resolve Rout per Retro.`);
       return;
     }
 
@@ -565,8 +631,6 @@
       logLine(`${stack.name}: ${emoji("No move (designated non-mover)", "warn")}.`);
       return;
     }
-
-  // ...keep the rest of the function unchanged...
 
     const raw = roll2d6();
     const drm = movementDRM(stack);
@@ -588,7 +652,7 @@
       ? `Hesitation Mod ${hes >= 0 ? "+" : ""}${hes}`
       : `Fire later`;
 
-    logLine(`${stack.name} [${sideLabel}] 2D6=${raw}${drm ? (drm>0?`+${drm}`:`${drm}`) : ""} → ${total}: ${moveTxt}; ${hesTxt}${addedKeep ? `; ${emoji("placed Keep Moving", "k")}` : ""} (${km})`);
+    logLine(`${stack.name} [${sideLabel}] 2D6=${raw}${drm ? (drm>0?`+${drm}`:`${drm}`) : ""} → ${total}: ${moveTxt}; ${hesTxt}${addedKeep ? `; ${emoji("placed Keep Advancing", "k")}` : ""} (${km})`);
   }
 
   // ---------- Fire ----------
@@ -621,14 +685,9 @@
   }
 
   // ---------- UI render ----------
-  function statusChipClass(status){
-    if (status === "good") return "statusChip statusGood";
-    if (status === "broken") return "statusChip statusBroken";
-    return "statusChip statusKIA";
-  }
   function statusLabel(status){
-    if (status === "good") return "Good";
-    if (status === "broken") return "Broken";
+    if (status === "good") return "GOOD";
+    if (status === "broken") return "BROKEN";
     return "KIA";
   }
 
@@ -646,7 +705,7 @@
       title.textContent = s.name;
 
       const status = document.createElement("span");
-      status.className = statusChipClass(s.status);
+      status.className = "statusChip";
       status.textContent = statusLabel(s.status);
 
       top.append(title, status);
@@ -659,38 +718,34 @@
         (s.team ? ` • Team=${s.team}` : "");
 
       const notes = document.createElement("div");
-      notes.className = "muted tiny";
+      notes.className = "tiny";
       notes.textContent = s.notes ? `Notes: ${s.notes}` : "Notes: (none)";
 
       const actions = document.createElement("div");
       actions.className = "actions";
 
       const moveBtn = document.createElement("button");
-      moveBtn.textContent = "Roll Movement (2D6)";
+      moveBtn.textContent = "Roll Move";
       moveBtn.onclick = () => { persistFromInputs(); rollMovementForStack(s); renderStacks(); renderHeader(); };
 
       const fireBtn = document.createElement("button");
-      fireBtn.textContent = "Roll Fire (1D6)";
+      fireBtn.textContent = "Roll Fire";
       fireBtn.onclick = () => { rollFireForStack(s); };
 
       const toggleKM = document.createElement("button");
-      toggleKM.textContent = s.keepMoving ? "Remove Keep Moving" : "Add Keep Moving";
-      toggleKM.className = "btn-warn";
+      toggleKM.textContent = s.keepMoving ? "Keep Off" : "Keep On";
       toggleKM.onclick = () => { s.keepMoving = !s.keepMoving; renderStacks(); };
 
       const setGood = document.createElement("button");
-      setGood.textContent = "Mark Good";
-      setGood.className = "btn-good";
+      setGood.textContent = "Good";
       setGood.onclick = () => { s.status = "good"; renderStacks(); renderHeader(); logLine(`${s.name}: status set to GOOD.`); };
 
       const setBroken = document.createElement("button");
-      setBroken.textContent = "Mark Broken";
-      setBroken.className = "btn-warn";
+      setBroken.textContent = "Broken";
       setBroken.onclick = () => { s.status = "broken"; renderStacks(); renderHeader(); logLine(`${s.name}: status set to BROKEN.`); };
 
       const setKIA = document.createElement("button");
-      setKIA.textContent = "Mark KIA";
-      setKIA.className = "btn-bad";
+      setKIA.textContent = "KIA";
       setKIA.onclick = () => { s.status = "kia"; s.keepMoving = false; renderStacks(); renderHeader(); logLine(`${s.name}: status set to KIA (removed).`); };
 
       const editBtn = document.createElement("button");
@@ -699,7 +754,6 @@
 
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
-      delBtn.className = "btn-bad";
       delBtn.onclick = () => { state.stacks = state.stacks.filter(x => x.id !== s.id); renderStacks(); renderHeader(); };
 
       actions.append(moveBtn, fireBtn, toggleKM, setGood, setBroken, setKIA, editBtn, delBtn);
@@ -761,7 +815,7 @@
     const fort = confirm("Starts in trench/fortification? OK=Yes, Cancel=No");
     s.inFort = fort;
 
-    const km = confirm("Has Keep Moving counter? OK=Yes, Cancel=No");
+    const km = confirm("Has Keep Advancing counter? OK=Yes, Cancel=No");
     s.keepMoving = km;
 
     renderStacks();
@@ -774,6 +828,8 @@
   }
 
   function nextTurn(){
+    resolveDefensiveFire(); 
+    resolveCloseCombat();       
     state.turn += 1;
     state.phase = "Setup";
     renderHeader();
@@ -803,7 +859,6 @@
 
   function resetAll(){
     if (!confirm("Reset everything (don't delete saved state)?")) return;
-    //localStorage.removeItem("retroSoloAI");
 
     state.turn = 1;
     state.phase = "Setup";
@@ -836,10 +891,8 @@
 
   // ---------- Wire up ----------
   document.getElementById("addStackBtn").onclick = addStack;
-
   document.getElementById("rollAllMoveBtn").onclick = rollAllMovement;
   document.getElementById("rollAllFireBtn").onclick = rollAllFire;
-
   document.getElementById("rollEventBtn").onclick = () => { persistFromInputs(); rollRandomEvent(); };
 
   document.getElementById("nextTurnBtn").onclick = nextTurn;
